@@ -1,6 +1,5 @@
 import requests
 from bs4 import BeautifulSoup
-import pandas as pd
 
 # URL of the match overs comparison page
 url = "https://www.espncricinfo.com/series/zimbabwe-vs-india-2024-1420218/zimbabwe-vs-india-5th-t20i-1420227/match-overs-comparison"
@@ -13,32 +12,26 @@ if response.status_code == 200:
     # Parse the HTML content
     soup = BeautifulSoup(response.content, 'html.parser')
     
-    # Find the container that holds the overs comparison data
+    # Find all tables on the page
     tables = soup.find_all('table')
     
-    # Define lists to store the data
-    over_data = []
-
-    # Process each table to extract data
+    # Flag to check if at least one table is found
+    table_found = False
+    
+    # Iterate through each table
     for table in tables:
-        rows = table.find_all('tr')
-        for row in rows:
-            cols = row.find_all('td')
-            cols = [ele.text.strip() for ele in cols]
-            if cols:
-                over_data.append(cols)
+        # Process each row in the table
+        for row in table.find_all('tr'):
+            # Find all cells in the row
+            cells = row.find_all(['th', 'td'])
+            
+            # Extract and print data from each cell
+            row_data = [cell.get_text(strip=True) for cell in cells]
+            print(row_data)
+            
+        table_found = True  # Set table_found to True if we found at least one table
     
-    # Print the extracted data for debugging
-    for row in over_data:
-        print(row)
-    
-    # Identify the correct number of columns based on the data
-    # Example: If the data has 6 columns, update the DataFrame accordingly
-    df = pd.DataFrame(over_data, columns=["Over", "Zimbabwe Runs", "Zimbabwe Wickets", "India Runs", "India Wickets", "Unknown Column"])
-    
-    # Save the data to a CSV file
-    df.to_csv('match_overs_comparison.csv', index=False)
-    
-    print("Data has been saved to match_overs_comparison.csv")
+    if not table_found:
+        print("No tables found on the page. Check the webpage structure.")
 else:
-    print("Failed to retrieve the page")
+    print(f"Failed to retrieve the page. Status code: {response.status_code}")
