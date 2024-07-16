@@ -1,12 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
-import csv
-import numpy as np
-from sklearn.linear_model import LinearRegression
-import matplotlib.pyplot as plt
 
 # URL of the match overs comparison page
-url = "https://www.espncricinfo.com/series/zimbabwe-vs-india-2024-1420218/zimbabwe-vs-india-5th-t20i-1420227/match-overs-comparison"
+url = "https://www.espncricinfo.com/series/major-league-cricket-2024-1432722/seattle-orcas-vs-san-francisco-unicorns-13th-match-1432738/match-overs-comparison"
 
 # Send a GET request to the URL
 response = requests.get(url)
@@ -19,16 +15,28 @@ if response.status_code == 200:
     # Find all tables on the page
     tables = soup.find_all('table')
     
-    # Flag to check if at least one table is found
-    table_found = False
-    
-    # List to hold data rows
-    all_data_rows = []
+    # Variables to store team names and scores
+    team1_name = None
+    team2_name = None
+    team1_scores = []
+    team2_scores = []
     
     # Iterate through each table
     for table in tables:
         # Process each row in the table
         rows = table.find_all('tr')
+        
+        # Check if this table contains team names
+        header_row = table.find('tr')
+        header_cells = header_row.find_all(['th', 'td'])
+        if len(header_cells) >= 3:
+            team1_name = header_cells[1].get_text(strip=True)
+            team2_name = header_cells[2].get_text(strip=True)
+        
+        # Print team names first
+        print(f"\nTeam 1: {team1_name}")
+        print(f"Team 2: {team2_name}")
+        print()
         
         # Iterate through each row, skipping the first (header) row
         for row in rows[1:]:  # Take all rows for comparison (first 20 overs)
@@ -36,67 +44,28 @@ if response.status_code == 200:
             cells = row.find_all(['th', 'td'])
             
             # Extract data from specific cells
-            over_number = int(cells[0].get_text(strip=True))  # Extract over number and convert to integer
-            score_cell_text = cells[1].get_text(strip=True)  # Get text from the second cell
+            over_number = cells[0].get_text(strip=True)  # Extract over number
             
-            # Extract the score before '/' and convert to integer
-            score = int(score_cell_text.split('/')[0].strip())
+            # Team 1 score details
+            team1_score_cell_text = cells[1].get_text(strip=True)
+            team1_score = team1_score_cell_text.split('(')[0].strip()  # Extract only score part
+            team1_scores.append(team1_score)
             
-            # Append data as a list to all_data_rows
-            all_data_rows.append([over_number, score])
-            
-        table_found = True  # Set table_found to True if we found at least one table
+            # Team 2 score details
+            team2_score_cell_text = cells[2].get_text(strip=True)
+            team2_score = team2_score_cell_text.split('(')[0].strip()  # Extract only score part
+            team2_scores.append(team2_score)
+        
         break  # Break after processing the first table
 
-    if not table_found:
-        print("No tables found on the page. Check the webpage structure.")
-    else:
-        # Prepare data for linear regression (first 15 overs)
-        data_rows = np.array(all_data_rows[:15])
-        X = data_rows[:, 0].reshape(-1, 1)  # Over numbers as independent variable
-        y = data_rows[:, 1]  # Scores as dependent variable
-        
-        # Fit linear regression model
-        model = LinearRegression()
-        model.fit(X, y)
-        
-        # Predict scores for next 5 overs (over numbers 16 to 20)
-        next_five_overs = np.array(range(16, 21)).reshape(-1, 1)
-        predicted_scores = model.predict(next_five_overs)
-        
-        # Print predicted scores for next 5 overs
-        print("Predicted Scores for Next 5 Overs:")
-        for over, score in zip(next_five_overs.flatten(), predicted_scores):
-            print(f"Over {over}: Predicted Score = {score:.2f}")
-        
-        # Extract actual scores for all 20 overs
-        actual_scores = np.array(all_data_rows)[:, 1]
-        
-        # Plotting actual scores vs predicted scores
-        plt.figure(figsize=(10, 6))
-        plt.scatter(np.arange(1, 21), actual_scores, color='blue', label='Actual Scores')
-        plt.plot(np.concatenate([X.flatten(), next_five_overs.flatten()]), np.concatenate([y, predicted_scores]), color='red', linewidth=2, label='Predicted Scores')
-        plt.xlabel('Over Number')
-        plt.ylabel('Score')
-        plt.title('Actual vs Predicted Scores')
-        plt.legend()
-        plt.grid(True)
-        plt.tight_layout()
-        plt.show()
-        
-        # Calculate accuracy metrics
-        actual_next_five_scores = actual_scores[15:20]
-        rmse = np.sqrt(np.mean((actual_next_five_scores - predicted_scores)**2))
-        print(f"Root Mean Squared Error (RMSE) for Predicted Scores: {rmse:.2f}")
-        
-        # Write all data rows to CSV file for reference
-        filename = "cricket_scores.csv"
-        with open(filename, mode='w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(['Over Number', 'Score'])
-            writer.writerows(all_data_rows)
-        
-        print(f"Data successfully written to '{filename}'.")
-        
+    # Now team1_scores and team2_scores contain the scores for Team 1 and Team 2
+    print("\nTeam 1 Scores:")
+    for over, score in enumerate(team1_scores, start=1):
+        print(f"{over}: {score}")
+    
+    print("\nTeam 2 Scores:")
+    for over, score in enumerate(team2_scores, start=1):
+        print(f"{over}: {score}")
+
 else:
     print(f"Failed to retrieve the page. Status code: {response.status_code}")
