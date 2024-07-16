@@ -3,7 +3,17 @@ from bs4 import BeautifulSoup
 import re
 
 # URL of the match overs comparison page
-url = "https://www.espncricinfo.com/series/major-league-cricket-2024-1432722/seattle-orcas-vs-san-francisco-unicorns-13th-match-1432738/match-overs-comparison"
+base_url = """
+https://www.espncricinfo.com/series/major-league-cricket-2024-1432722/seattle-orcas-vs-san-francisco-unicorns-13th-match-1432738/match-statistics"""
+last_slash_index = base_url.rfind('/')
+
+if last_slash_index != -1:
+    # Extract the base URL and the path segment ending just before the last slash
+    base_url = base_url[:last_slash_index]
+    path_segment = base_url[last_slash_index + 1:]
+
+    # Construct the URL for match overs comparison
+    url = base_url + "/match-overs-comparison"
 
 # Send a GET request to the URL
 response = requests.get(url)
