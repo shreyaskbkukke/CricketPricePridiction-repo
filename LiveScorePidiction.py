@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import re
+import time
 
 def construct_match_overs_url(base_url):
     """Constructs the URL for match overs comparison based on base_url."""
@@ -9,15 +10,30 @@ def construct_match_overs_url(base_url):
         base_url = base_url[:last_slash_index]
     return base_url + "/match-overs-comparison"
 
+
+import re
+
 def extract_total_overs(soup):
     """Extracts the total overs information from the webpage."""
-    overs_line = soup.find(string=re.compile(r'\(\d+ ov'))
-    if overs_line:
-        match = re.search(r'\((\d+) ov', overs_line)
-        if match:
-            total_overs = match.group(1)
-            return total_overs
-    return None
+    total_overs = None
+    try:
+        # Find the element containing the overs information
+        overs_line = soup.find(string=re.compile(r'(\d+)/(\d+)\s+ov,'))
+        print(overs_line)
+        if overs_line:
+            # Use regex to extract the total overs
+            match = re.search(r'/(\d+) ov', overs_line)
+            if match:
+                total_overs = match.group(1)
+                print(f"Total overs: {total_overs}")
+            else:
+                print("Total overs not found.")
+        else:
+            print("Overs line not found on the webpage.")
+    except Exception as e:
+        print(f"Error extracting total overs: {e}")
+
+    return total_overs
 
 def extract_team_scores(soup):
     """Extracts team names and scores from tables on the webpage."""
@@ -59,37 +75,45 @@ def extract_team_scores(soup):
     return team1_name, team2_name, team1_scores, team2_scores
 
 def print_scores(team_name, scores):
-    """Prints the scores of a team."""
+    """Prints the scores of a team, skipping 'Yet to bat' or '-' entries."""
     print(f"\nScore of {team_name}:")
     for over, score in enumerate(scores, start=1):
-        print(f"{over}: {score}")
+        if score not in ["Yet to bat", "-"]:
+            print(f"{over}: {score}")
 
-try:
-    base_url = """
-    https://www.espncricinfo.com/series/t20-blast-2024-1410370/kent-vs-glamorgan-south-group-1410481//match-overs-comparison
-    
-    """
+base_url = """
+        https://www.espncricinfo.com/series/lanka-premier-league-2024-1421415/kandy-falcons-vs-dambulla-sixers-18th-match-1428476/match-overs-comparison
 
-    url = construct_match_overs_url(base_url)
+        """
 
-    response = requests.get(url)
-    response.raise_for_status()
-    soup = BeautifulSoup(response.content, 'html.parser')
+url = construct_match_overs_url(base_url)
 
-    total_overs = extract_total_overs(soup)
-    if total_overs:
-        print("\nMatch Details Detected")
-        print(f"Total overs: {total_overs}")
-    else:
-        print("Total overs not found.")
+prev_total_overs = None
+prev_team1_scores = None
+prev_team2_scores = None
 
-    team1_name, team2_name, team1_scores, team2_scores = extract_team_scores(soup)
+while True:
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
 
-    print(f"\nTeam 1: {team1_name}")
-    print(f"Team 2: {team2_name}")
+        team1_name, team2_name, team1_scores, team2_scores = extract_team_scores(soup)
+        print("\nMatch Details Detected\n")
 
-    print_scores(team1_name, team1_scores)
-    print_scores(team2_name, team2_scores)
+        total_overs = extract_total_overs(soup)
 
-except requests.exceptions.RequestException as e:
-    print(f"Failed to retrieve the page: {e}")
+        print(f"\nTeam 1: {team1_name}")
+        print(f"Team 2: {team2_name}")
+
+        print_scores(team1_name, team1_scores)
+        print_scores(team2_name, team2_scores)
+        time.sleep(2)
+
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to retrieve the page: {e}")
+        time.sleep(60)
+
+    except KeyboardInterrupt:
+        print("\n\nProcess interrupted by the user. Exiting...")
+        break
