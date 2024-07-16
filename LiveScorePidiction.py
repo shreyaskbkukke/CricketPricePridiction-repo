@@ -1,5 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
+import re
 
 # URL of the match overs comparison page
 url = "https://www.espncricinfo.com/series/major-league-cricket-2024-1432722/seattle-orcas-vs-san-francisco-unicorns-13th-match-1432738/match-overs-comparison"
@@ -11,7 +12,22 @@ response = requests.get(url)
 if response.status_code == 200:
     # Parse the HTML content
     soup = BeautifulSoup(response.content, 'html.parser')
-    
+
+    # Find the specific line containing overs information
+    overs_line = soup.find(string=re.compile(r'\(\d+ ov'))
+
+    if overs_line:
+        # Use regex to extract the total overs
+        match = re.search(r'\((\d+) ov', overs_line)
+        if match:
+            total_overs = match.group(1)
+            print("\nMatch Details Detected")
+            print(f"Total overs: {total_overs}")
+        else:
+            print("Total overs not found.")
+    else:
+        print("Overs line not found on the webpage.")
+
     # Find all tables on the page
     tables = soup.find_all('table')
     
@@ -59,11 +75,11 @@ if response.status_code == 200:
         break  # Break after processing the first table
 
     # Now team1_scores and team2_scores contain the scores for Team 1 and Team 2
-    print("\nTeam 1 Scores:")
+    print(f"\nScore of {team1_name}:")
     for over, score in enumerate(team1_scores, start=1):
         print(f"{over}: {score}")
     
-    print("\nTeam 2 Scores:")
+    print(f"\nScore of {team2_name}:")
     for over, score in enumerate(team2_scores, start=1):
         print(f"{over}: {score}")
 
